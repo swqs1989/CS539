@@ -33,9 +33,9 @@ class DS(DT):
         e = 0
         for val in np.unique(Y):
             prob = 1.0 * np.sum(D[Y == val])
-            if prob != 0:
-                e += -1.0 * prob / np.sum(D) * math.log(prob / np.sum(D), 2)
-            else:
+            try:
+                e += -1.0 * prob * math.log(prob, 2)
+            except ValueError:
                 e += 0
         #########################################
         return e 
@@ -55,18 +55,14 @@ class DS(DT):
         #########################################
         ## INSERT YOUR CODE HERE
         groups = {}
-        groupsd = {}
         ce = 0
-        for x, y, d in zip(X, Y, D):
+        for x, y in zip(X, Y):
             try:
                 groups[x].append(y)
-                groupsd[x].append(d)
             except KeyError:
                 groups[x] = [y]
-                groupsd[x] = [d]
         for k,v in groups.iteritems():
-            ce += (1.0 * np.sum(D[X == k])) \
-                   * DS.entropy(np.array(v), np.array(groupsd[k]))
+            ce += (1.0 * np.sum(D[X == k])) * DS.entropy(np.array(v), np.repeat(1.0, len(v)) / len(v))
         #########################################
         return ce 
 
@@ -84,7 +80,11 @@ class DS(DT):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-        g = DS.entropy(Y, D) - DS.conditional_entropy(Y, X, D)
+    
+
+
+
+    
         #########################################
         return g
 
@@ -104,19 +104,12 @@ class DS(DT):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-        cp = DT.cutting_points(X, Y)
-        th = -1
-        g = -1
-        try:
-            for v in cp:
-                XX = np.copy(X)
-                XX = np.array(["T" if x > v else "F" for x in XX])
-                ig = DS.information_gain(Y, XX, D)
-                if ig > g:
-                    th = v
-                    g = ig
-        except TypeError:
-            return -float('Inf'), -1
+
+
+
+
+
+
         #########################################
         return th,g 
      
@@ -138,14 +131,13 @@ class DS(DT):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-        infos = []
-        ths = []
-        for j in range(X.shape[0]):
-            tth, g = DS.best_threshold(X[j, :], Y, D)
-            ths.append(tth)
-            infos.append(g)
-        i = np.argmax(infos)
-        th = ths[i]
+    
+
+
+
+
+
+    
         #########################################
         return i, th
              
@@ -164,13 +156,10 @@ class DS(DT):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-        max = 0
-        y = None
-        for val in np.unique(Y):
-            v = np.sum(D[Y == val])
-            if v > max:
-                max = v
-                y = val
+
+
+
+
         #########################################
         return y
  
@@ -191,25 +180,21 @@ class DS(DT):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-        t = Node(X, Y, isleaf=False)
-        t.p = DS.most_common(Y, D)
+    
         # if Condition 1 or 2 holds, stop splitting 
-        if DT.stop1(Y) or DT.stop2(X):
-            t.isleaf = True
-            return t
+    
+
 
         # find the best attribute to split
-        t.i, t.th = self.best_attribute(X, Y, D)
+    
+
+
 
         # configure each child node
-        t.C1 = Node(X[:, X[t.i, :] < t.th],
-                    Y[X[t.i, :] < t.th],
-                    isleaf=True,
-                    p=DS.most_common(Y[X[t.i, :] < t.th], D[X[t.i, :] < t.th]))
-        t.C2 = Node(X[:, X[t.i, :] >= t.th],
-                    Y[X[t.i, :] >= t.th],
-                    isleaf=True,
-                    p=DS.most_common(Y[X[t.i, :] >= t.th], D[X[t.i, :] >= t.th]))
+
+
+
+    
         #########################################
         return t
     
@@ -235,7 +220,8 @@ class AB(DS):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-        e = float(np.sum(D[Y != Y_]))
+
+
         #########################################
         return e
 
@@ -251,12 +237,11 @@ class AB(DS):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-        try:
-            a = 0.5 * math.log((1 - e) / e)
-        except ZeroDivisionError:
-            a = 699.
-        except ValueError:
-            a = -699.
+
+
+
+
+
         #########################################
         return a
 
@@ -275,11 +260,12 @@ class AB(DS):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-        t, f = Y == Y_, Y != Y_
-        D = np.copy(D)
-        D[t] = D[t] * np.exp(-1.0 * a)
-        D[f] = D[f] * np.exp(1.0 * a)
-        D = D / float(np.sum(D))
+
+
+
+
+
+
         #########################################
         return D
 
@@ -301,17 +287,10 @@ class AB(DS):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-        ds = DS()
-        t = ds.build_tree(X, Y, D)
-        if t.isleaf:
-            Y_ = np.repeat(t.p, len(Y))
-        else:
-            Y_ = np.repeat(None, len(Y))
-            Y_[X[t.i, :] < t.th] = t.C1.p
-            Y_[X[t.i, :] >= t.th] = t.C2.p
-        e = AB.weighted_error_rate(Y, Y_, D)
-        a = AB.compute_alpha(e)
-        D = AB.update_D(D, a, Y, Y_)
+
+
+
+
         #########################################
         return t,a,D
 
@@ -331,16 +310,10 @@ class AB(DS):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-        y = []
-        for t in T:
-            if t.isleaf:
-                p = t.p
-            else:
-                p = t.C1.p if x[t.i] < t.th else t.C2.p
-            y.append(p)
-        label = np.unique(y)
-        y = np.array([1. if yy == label[0] else -1. for yy in y])
-        y = label[0] if np.sum(y * A) > 0 else label[1]
+        
+
+
+    
         #########################################
         return y
  
@@ -361,10 +334,11 @@ class AB(DS):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-        Y = []
-        for x in X.T:
-            Y.append(AB.inference(x, T, A))
-        Y = np.array(Y)
+    
+
+
+
+ 
         #########################################
         return Y 
  
@@ -387,19 +361,14 @@ class AB(DS):
         #########################################
         ## INSERT YOUR CODE HERE
 
+
         # initialize weight as 1/n
-        D = 1. * np.ones(X.shape[1]) / X.shape[1]
+
 
         # iteratively build decision stumps
-        T = []
-        A = []
-        for _ in range(n_tree):
-            t, a, D = AB.step(X, Y, D)
-            T.append(t)
-            A.append(a)
 
-        T = np.array(T)
-        A = np.array(A)
+
+
         #########################################
         return T, A
    

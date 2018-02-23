@@ -155,7 +155,7 @@ def test_load_dataset():
     assert type(X) == np.ndarray
     assert type(Y) == np.ndarray
     assert X.shape ==(2,800) 
-    assert Y.shape ==(800,) 
+    assert Y.shape ==(800,)
     assert Y[0] == 0 
     assert Y[1] == 1 
     assert Y[-1] == 1 
