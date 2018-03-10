@@ -25,8 +25,14 @@ def tanh(z):
     """
     #########################################
     ## INSERT YOUR CODE HERE
+    upbound = Variable(th.ones(z.size()) * 80.)
+    lowbound = Variable(th.ones(z.size()) * -80.)
 
-
+    z = th.min(z, upbound)
+    z = th.max(z, lowbound)
+    expz = th.exp(z)
+    expz_ = th.exp(-1. * z)
+    a = (expz - expz_) / (expz + expz_)
 
     #########################################
     return a
@@ -56,9 +62,10 @@ class RNN(sr):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
-
-
+        self.U = Variable(th.FloatTensor(p, h).zero_(), requires_grad=True)
+        self.V = Variable(th.FloatTensor(h, h).zero_(), requires_grad=True)
+        self.b_h = Variable(th.ones(h), requires_grad=True)
+        super(RNN, self).__init__(h, c)
         #########################################
 
 
@@ -75,8 +82,12 @@ class RNN(sr):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
+        x = x.mm(self.U) + self.b_h.expand(x.size()[0], self.b_h.size()[0]) # n by h
+        h = H.mm(self.V) # n by h
+        z = x + h
+        H_new = tanh(z) # n by h
 
-
+        z = th.mm(H_new, self.W) + self.b.expand(x.size()[0], self.b.size()[0])
         #########################################
         return z, H_new
 
@@ -107,18 +118,33 @@ class RNN(sr):
                 H = Variable(th.zeros(n,h))
                 #########################################
                 ## INSERT YOUR CODE HERE
-
                 # go through each time step
-
+                loss = 0
+                for num in range(t):
                     # forward pass
+                    z, H_new = self.forward(x[:, num, :], H)
+                    # compute loss
+                    loss += self.compute_L(z, y[:, num])
 
-                    # compute loss 
+                    H = H_new
 
                 # backward pass: compute gradients
-
+                self.backward(loss)
                 # update model parameters
+                self.U.data -= alpha * self.U.grad.data
+                self.V.data -= alpha * self.V.grad.data
+                self.b_h.data -= alpha * self.b_h.grad.data
+
+                self.W.data -= alpha * self.W.grad.data
+                self.b.data -= alpha * self.b.grad.data
 
                 # reset the gradients to zero
+                self.U.grad.data.zero_()
+                self.V.grad.data.zero_()
+                self.b_h.grad.data.zero_()
+
+                self.W.grad.data.zero_()
+                self.b.grad.data.zero_()
 
                 #########################################
                 count+=1

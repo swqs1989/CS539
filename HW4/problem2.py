@@ -28,10 +28,20 @@ def conv2d(x,W,b):
     '''
     #########################################
     ## INSERT YOUR CODE HERE
+    l, h, w = x.size()
+    l, s, s = W.size()
 
-
-
-
+    for i in range(0, h - s + 1):
+            for j in range(0, w - s + 1):
+                tot = 0
+                for k in range(l):
+                    tot += th.dot(x[k, i: (i + s), j: (j + s)], W[k, :, :])
+                tot += b
+                try:
+                    z = th.cat((z, tot))
+                except:
+                    z = tot
+    z = z.view(h - s + 1, w - s + 1)
     #########################################
     return z 
 
@@ -51,11 +61,22 @@ def Conv2D(x,W,b):
     '''
     #########################################
     ## INSERT YOUR CODE HERE
+    n, l, h, w = x.size()
+    nf, l, s, s = W.size()
 
-
-
-
-
+    for p in range(n):
+        for q in range(nf):
+            try:
+                y = th.cat((y, conv2d(x[p, :, :, :], W[q, :, :, :], b[q])))
+            except:
+                y = conv2d(x[p, :, :, :], W[q, :, :, :], b[q])
+        y = y.view(nf, h - s + 1, w - s + 1)
+        try:
+            z = th.cat((z, y))
+        except:
+            z = y
+        del y
+    z = z.view(-1, nf, h - s + 1, w - s + 1)
     #########################################
     return z 
 
@@ -73,9 +94,7 @@ def ReLU(z):
     '''
     #########################################
     ## INSERT YOUR CODE HERE
-
-
-
+    a = th.max(z, Variable(th.Tensor(z.size()).zero_()))
     #########################################
     return a 
 
@@ -93,11 +112,18 @@ def avgpooling(a):
     '''
     #########################################
     ## INSERT YOUR CODE HERE
+    n, nf, h, w = a.size()
 
-
-
-
-
+    for i in range(n):
+        for j in range(nf):
+            for k in range(0, h - 1, 2):
+                for l in range(0, w - 1, 2):
+                    avg = th.mean(a[i, j, k:k+2, l:l+2])
+                    try:
+                        p = th.cat((p, avg))
+                    except:
+                        p = avg
+    p = p.view(n, nf, h/2, w/2)
 
     #########################################
     return p 
@@ -116,11 +142,21 @@ def maxpooling(a):
     '''
     #########################################
     ## INSERT YOUR CODE HERE
+    n, nf, h, w = a.size()
 
-
-
-
-
+    for i in range(n):
+        for j in range(nf):
+            for k in range(0, h - 1, 2):
+                for l in range(0, w - 1, 2):
+                    # ma = th.max(a[i, j, k:k + 2, l:l + 2])
+                    target = a[i, j, k, l] if (a[i, j, k, l] >= a[i, j, k, l+1]).data[0] else a[i, j, k, l+1]
+                    target = a[i, j, k+1, l] if (a[i, j, k+1, l] > target).data[0] else target
+                    target = a[i, j, k+1, l+1] if (a[i, j, k+1, l+1] > target).data[0] else target
+                    try:
+                        p = th.cat((p, target))
+                    except:
+                        p = target
+    p = p.view(n, nf, h / 2, w / 2)
     #########################################
     return p 
 
@@ -138,9 +174,7 @@ def num_flat_features(h=28, w=28, s=3, n_filters=10):
     '''
     #########################################
     ## INSERT YOUR CODE HERE
-
-
-
+    p = (h - s + 1) * (w - s + 1) // 2 // 2 * n_filters
 
     #########################################
     return p
@@ -175,12 +209,15 @@ class CNN(sr):
         ## INSERT YOUR CODE HERE
 
         # compute the number of flat features
+        self.p = num_flat_features(h, w, s, n_filters)
+        self.c = c
+        # initialize fully connected layer
 
-        # initialize fully connected layer 
+        super(CNN, self).__init__(self.p, c)
 
         # the kernel matrix of convolutional layer 
-
-
+        self.conv_W = Variable(th.FloatTensor(n_filters, l, s, s).zero_(), requires_grad=True)
+        self.conv_b = Variable(th.ones(n_filters), requires_grad=True)
 
         #########################################
 
@@ -198,15 +235,15 @@ class CNN(sr):
         ## INSERT YOUR CODE HERE
     
         # convolutional layer
-
+        x = Conv2D(x, self.conv_W, self.conv_b)
         # ReLU activation 
-
+        x = ReLU(x)
         # maxpooling layer
-
-        # flatten 
-
+        x = maxpooling(x)
+        # flatten
+        x = x.view(-1, self.p)
         # fully connected layer
-
+        z = th.mm(x, self.W) + self.b.expand(x.size()[0], self.b.size()[0])
         #########################################
         return z
 
@@ -231,14 +268,24 @@ class CNN(sr):
                 ## INSERT YOUR CODE HERE
 
                 # forward pass
-
-                # compute loss 
+                z = self.forward(x)
+                # compute loss
+                loss = self.compute_L(z, y)
 
                 # backward pass: compute gradients
+                self.backward(loss)
 
                 # update model parameters
+                self.W.data -= alpha * self.W.grad.data
+                self.b.data -= alpha * self.b.grad.data
+                self.conv_W.data -= alpha * self.conv_W.grad.data
+                self.conv_b.data -= alpha * self.conv_b.grad.data
 
-                # reset the gradients 
+                # reset the gradients
+                self.W.grad.data.zero_()
+                self.b.grad.data.zero_()
+                self.conv_W.grad.data.zero_()
+                self.conv_b.grad.data.zero_()
 
                 #########################################
                 count+=1

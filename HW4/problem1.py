@@ -34,7 +34,9 @@ class SoftmaxRegression(Module):
         super(SoftmaxRegression, self).__init__()
         #########################################
         ## INSERT YOUR CODE HERE
-
+        self.W = Variable(th.zeros(p, c), requires_grad=True)
+        self.b = Variable(th.zeros(c), requires_grad=True)
+        self.loss_fn = CrossEntropyLoss()
 
         #########################################
 
@@ -53,7 +55,7 @@ class SoftmaxRegression(Module):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
+        z = th.mm(x, self.W) + self.b.expand(x.size()[0], self.b.size()[0])
 
         #########################################
         return z
@@ -71,8 +73,7 @@ class SoftmaxRegression(Module):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
-
+        L = self.loss_fn(z, y)
         #########################################
         return L 
 
@@ -93,8 +94,7 @@ class SoftmaxRegression(Module):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
-
+        L.backward()
         #########################################
 
 
@@ -122,14 +122,21 @@ class SoftmaxRegression(Module):
                 ## INSERT YOUR CODE HERE
 
                 # forward pass
+                z = self.forward(x)
 
-                # compute loss 
+                # compute loss
+                loss = self.compute_L(z, y)
 
                 # backward pass: compute gradients
+                self.backward(loss)
 
                 # update model parameters
+                self.W.data -= alpha * self.W.grad.data
+                self.b.data -= alpha * self.b.grad.data
 
                 # reset the gradients of W and b to zero
+                self.W.grad.data.zero_()
+                self.b.grad.data.zero_()
 
                 #########################################
 
@@ -151,7 +158,9 @@ class SoftmaxRegression(Module):
             ## INSERT YOUR CODE HERE
 
             # predict labels of the batch of testing data
+            outputs = self(x)
 
+            _, y_predicted = th.max(outputs.data, 1)
 
             #########################################
             total += y.size(0)

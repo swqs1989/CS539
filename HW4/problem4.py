@@ -40,7 +40,17 @@ class LSTM(sr):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
+        self.p = p
+        self.h = h
+        self.W_i = Variable(th.FloatTensor(p+h, h).zero_(), requires_grad=True)
+        self.b_i = Variable(th.FloatTensor(h).zero_(), requires_grad=True)
+        self.W_o = Variable(th.FloatTensor(p+h, h).zero_(), requires_grad=True)
+        self.b_o = Variable(th.FloatTensor(h).zero_(), requires_grad=True)
+        self.W_c = Variable(th.FloatTensor(p+h, h).zero_(), requires_grad=True)
+        self.b_c = Variable(th.FloatTensor(h).zero_(), requires_grad=True)
+        self.W_f = Variable(th.FloatTensor(p+h, h).zero_(), requires_grad=True)
+        self.b_f = Variable(th.FloatTensor(h).zero_(), requires_grad=True)
+        super(LSTM, self).__init__(h, c)
 
 
         #########################################
@@ -62,10 +72,26 @@ class LSTM(sr):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
+        n, p = x.size()
+        f = th.cat((x, H), dim=1)
+        f = th.mm(f, self.W_f)
+        f = f + self.b_f.expand(n, self.h)
+        f = th.sigmoid(f)
 
+        i = th.cat((x, H), dim=1)
+        i = th.mm(i, self.W_i)
+        i = i + self.b_i.expand(n, self.h)
+        i = th.sigmoid(i)
 
+        o = th.cat((x, H), dim=1)
+        o = th.mm(o, self.W_o)
+        o = o + self.b_o.expand(n, self.h)
+        o = th.sigmoid(o)
 
-
+        C_c = th.cat((x, H), dim=1)
+        C_c = th.mm(C_c, self.W_c)
+        C_c = C_c + self.b_c.expand(n, self.h)
+        C_c = tanh(C_c)
         #########################################
         return f, i, o, C_c
 
@@ -86,7 +112,7 @@ class LSTM(sr):
         #########################################
         ## INSERT YOUR CODE HERE
 
-
+        C_new = f * C + i * C_c
 
         #########################################
         return C_new 
@@ -106,6 +132,7 @@ class LSTM(sr):
         #########################################
         ## INSERT YOUR CODE HERE
 
+        H = o * tanh(C)
 
         #########################################
         return H
@@ -128,8 +155,10 @@ class LSTM(sr):
         #########################################
         ## INSERT YOUR CODE HERE
 
-
-
+        f, i, o, C_c = self.gates(x, H)
+        C_new = self.update_cell(C, C_c, f, i)
+        H_new = self.output_hidden_state(C_new, o)
+        z = th.mm(H_new, self.W) + self.b.expand(x.size()[0], self.b.size()[0])
         #########################################
         return z, H_new, C_new
 
@@ -172,16 +201,43 @@ class LSTM(sr):
 
 
                 # go through each time step
-
+                loss = 0
+                for num in range(t):
                     # forward pass
+                    z, H_new, C_new = self.forward(x[:, num, :], H, C)
+                    # compute loss
+                    loss += self.compute_L(z, y[:, num])
 
-                    # compute loss 
+                    H = H_new
+                    C = C_new
 
                 # backward pass: compute gradients
-
+                self.backward(loss)
                 # update model parameters
+                self.W_i.data -= alpha * self.W_i.grad.data
+                self.b_i.data -= alpha * self.b_i.grad.data
+                self.W_o.data -= alpha * self.W_o.grad.data
+                self.b_o.data -= alpha * self.b_o.grad.data
+                self.W_c.data -= alpha * self.W_c.grad.data
+                self.b_c.data -= alpha * self.b_c.grad.data
+                self.W_f.data -= alpha * self.W_f.grad.data
+                self.b_f.data -= alpha * self.b_f.grad.data
+
+                self.W.data -= alpha * self.W.grad.data
+                self.b.data -= alpha * self.b.grad.data
 
                 # reset the gradients to zero
+                self.W_i.grad.data.zero_()
+                self.b_i.grad.data.zero_()
+                self.W_o.grad.data.zero_()
+                self.b_o.grad.data.zero_()
+                self.W_c.grad.data.zero_()
+                self.b_c.grad.data.zero_()
+                self.W_f.grad.data.zero_()
+                self.b_f.grad.data.zero_()
+
+                self.W.grad.data.zero_()
+                self.b.grad.data.zero_()
 
                 #########################################
                 count+=1
