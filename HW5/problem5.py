@@ -53,7 +53,7 @@ class PolicyNet(QNet):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
+        z = th.mv(self.W, s)
         #########################################
         return z
 
@@ -72,7 +72,8 @@ class PolicyNet(QNet):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
+        # m = th.nn.Softmax()
+        a = th.nn.functional.softmax(z, dim=0)
         #########################################
         return a
 
@@ -87,8 +88,8 @@ class PolicyNet(QNet):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
-
+        z = self.compute_z(s)
+        a = self.compute_a(z)
         #########################################
         return a
 
@@ -107,9 +108,8 @@ class PolicyNet(QNet):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
-
-
+        m = th.distributions.Categorical(a).sample().data[0]
+        logp = th.log(a[m])
         #########################################
         return m, logp 
 
@@ -134,6 +134,7 @@ class PolicyNet(QNet):
                 R: the raw rewards in the game, a python list of collected rewards.
                     R[i] is the collected reward at the i-th step.
         '''
+        # return 0
         S,M,logP,R = [],[],[],[]
         s = env.reset() # initial state of the game 
         done = False
@@ -145,11 +146,18 @@ class PolicyNet(QNet):
             ## INSERT YOUR CODE HERE
 
             # compute the probability of taking each action
-
+            a = self.forward(s)
             # sample an action based upon the probabilities
-
+            m, logp = self.sample_action(a)
             # play one step in the game
+            s_new, r, done, info = env.step(m)
 
+            S.append(s)
+            M.append(m)
+            logP.append(logp)
+            R.append(r)
+
+            s = s_new
 
             #########################################
         return S,M,logP,R
@@ -168,9 +176,10 @@ class PolicyNet(QNet):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
-
-
+        dR = []
+        for i in range(len(R)):
+            ga = [gamma ** j for j in range(len(R) - i)]
+            dR.append(np.sum((np.array(R[i:]) * np.array(ga))))
         #########################################
         return dR 
  
@@ -189,10 +198,11 @@ class PolicyNet(QNet):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
-
-
-
+        for p, r in zip(logP, dR):
+            try:
+                L += -1. * p * r
+            except:
+                L = -1. * p * r
         #########################################
         return L 
 
@@ -219,15 +229,15 @@ class PolicyNet(QNet):
         for _ in xrange(n_episodes):
             #########################################
             ## INSERT YOUR CODE HERE
+            S, M, logP, R = self.play_episode(env, render)
 
+            dR = self.discount_rewards(R, gamma)
 
+            L = self.compute_L(logP, dR)
 
+            L.backward()
 
-
-
-
-
-
+            optimizer.step()
 
             #########################################
             total_rewards += sum(R) # assuming the list of rewards of the episode is R

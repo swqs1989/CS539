@@ -58,9 +58,9 @@ class QNet(object):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
-
-
+        self.n = n
+        self.e = e
+        self.W = Variable(th.zeros(n, d), requires_grad=True)
         #########################################
 
 
@@ -76,9 +76,7 @@ class QNet(object):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
-
-
+        Q = th.mv(self.W, s)
         #########################################
         return Q
 
@@ -97,10 +95,11 @@ class QNet(object):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
-
-
-
+        if np.random.uniform() < self.e:
+            a = np.random.randint(0, self.n)
+        else:
+            Q = self.compute_Q(s)
+            a = np.argmax(Q.data)
         #########################################
         return a
 
@@ -121,10 +120,12 @@ class QNet(object):
         ## INSERT YOUR CODE HERE
 
         # compute target Q
-
+        tQ = self.compute_Q(s_new)
         # get current Q
+        cQ = self.compute_Q(s)
 
         # compute loss
+        L = (r + gamma * th.max(tQ.data) - cQ[a]) ** 2
 
         #########################################
         return L 
@@ -160,16 +161,25 @@ class QNet(object):
                 ## INSERT YOUR CODE HERE
 
                 # agent selects an action
+                a = self.forward(s)
 
                 # game return a reward and new state
+                s_new, r, done, info = env.step(a)
 
                 # agent update the parameters
+                # It seems that no update should perform considering the Q is not kept in Agent.
 
                 # compute gradients
+                loss = self.compute_L(s, a, r, s_new, gamma)
+                loss.backward()
 
                 # update model parameters
+                self.W.data -= lr * self.W.grad.data
 
                 # reset the gradients of W to zero
+                self.W.grad.data.zero_()
+
+                s = s_new
 
                 #########################################
                 total_rewards += r # assuming the reward of the step is r

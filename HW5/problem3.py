@@ -42,7 +42,7 @@ class QLearner(Agent):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
+        super(QLearner, self).__init__(n, n_s, e)
 
         #########################################
 
@@ -63,7 +63,7 @@ class QLearner(Agent):
         '''
         #########################################
         ## INSERT YOUR CODE HERE
-
+        self.Q[s, a] = self.Q[s, a] + lr * (r + gamma * np.max(self.Q[s_new, ]) - self.Q[s, a])
 
         #########################################
 
@@ -98,11 +98,14 @@ class QLearner(Agent):
                 ## INSERT YOUR CODE HERE
 
                 # agent selects an action
-
+                a = self.forward(s)
                 # game return a reward and new state
+                observation, r, done, info = env.step(a)
 
                 # agent update the parameters
+                self.update(s, a, r, observation, gamma, lr)
 
+                s = observation
                 #########################################
                 total_rewards += r # assuming the reward of the step is r
         return total_rewards
