@@ -229,6 +229,8 @@ class PolicyNet(QNet):
         for _ in xrange(n_episodes):
             #########################################
             ## INSERT YOUR CODE HERE
+            optimizer.zero_grad()
+
             S, M, logP, R = self.play_episode(env, render)
 
             dR = self.discount_rewards(R, gamma)
